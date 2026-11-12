@@ -1,0 +1,23 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: OI-3
+  title: "on-demand-isr becomes an Orun baseline"
+spec:
+  goal: A new site goes from nothing to live on stage and prod in one landing, its own name throughout, with Baseline CI proving it offline
+  affects:
+    - blueprint.yaml
+    - repo-blueprint.yaml
+    - .baseline
+    - testing
+    - tooling
+    - hooks
+    - docs/phases
+    - ai/context
+    - .github/workflows
+    - BOOTSTRAP.md
+    - README.md
+  doneWhen:
+    - Baseline CI is green on main
+    - baseline-v1 is tagged
+  gates: []
