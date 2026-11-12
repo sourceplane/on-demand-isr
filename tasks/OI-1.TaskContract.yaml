@@ -1,0 +1,13 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: OI-1
+  title: "The on-demand-isr epic doc set"
+spec:
+  goal: The epic's README, design, plan, risks and status, and the three task contracts, are on main
+  affects:
+    - specs/epics/on-demand-isr
+    - tasks
+  doneWhen:
+    - the doc set and OI-1, OI-2 and OI-3 are merged
+  gates: []
