@@ -1,0 +1,143 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: web
+  description: The on-demand ISR site (Next.js on Cloudflare Workers + Static Assets via @opennextjs/cloudflare, per environment; R2 + Durable Objects as the Next.js cache; a GitHub App's webhook regenerates the pages; sample issues until an App is connected)
+spec:
+  type: cloudflare-workers-assets-turbo
+  lifecycle: production
+  owner: platform
+  # Its pages, attached to it in the workspace's catalog: what the Docs
+  # library shows for it, and what the catalog's docs and runbook checks read.
+  # Generated from what this manifest and its sources declare.
+  docs:
+    overview: docs/overview.md
+    pages:
+      - { path: docs/architecture.md, role: architecture, title: Architecture }
+      - { path: docs/runbook.md, role: runbook, title: Runbook }
+  # `app`, not `web`: a domain and a component share one name space in the
+  # catalog, and a domain called `web` hid this component from it.
+  domain: app
+  path: apps/web
+  # Its own lane per environment: the Next.js build is the longest job in the
+  # plan, and a shared lane would wait on it.
+  lane: isolated
+  # INFRA BEFORE APP. The R2 bucket is the Worker's incremental cache, bound
+  # by name, and the name is rendered into its config during the build from
+  # the wiring document the cloudflare-r2 root lease-publishes after its
+  # apply. A job resolves its secrets when it STARTS, so on a merge to main
+  # this deploy waits for that environment's apply (enforced) and the document
+  # is there; a pull request deploys nothing, so nothing on one waits
+  # (advisory). The Durable Objects (tag cache, revalidation queue) need no
+  # root — the Worker exports their classes and the migration creates them on
+  # deploy.
+  dependsOn:
+    - component: cloudflare-r2
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+  secretEnv:
+    WIRING_CLOUDFLARE_R2_STAGE: "secret://on-demand-isr/on-demand-isr/stage/WIRING_CLOUDFLARE_R2"
+    WIRING_CLOUDFLARE_R2_PROD: "secret://on-demand-isr/on-demand-isr/prod/WIRING_CLOUDFLARE_R2"
+  # The GitHub App, connected after the build by its owner, per environment:
+  # its ID, its private key and its webhook secret. None of them reaches the
+  # build (buildCommand below): the deploy hands all three to the Worker as
+  # secrets, read per request (lib/settings.ts), so connecting an App is
+  # setting them and redeploying. Until the first two are set — every fresh
+  # product — the page lists sample issues and says how to connect one; until
+  # the third is, app/api/webhook refuses every delivery (the README's
+  # "Connecting a GitHub App").
+  optionalSecretEnv:
+    GITHUB_APP_ID: "secret://on-demand-isr/on-demand-isr/{{ .environment }}/GITHUB_APP_ID"
+    GITHUB_APP_PK_PEM: "secret://on-demand-isr/on-demand-isr/{{ .environment }}/GITHUB_APP_PK_PEM"
+    GITHUB_WEBHOOK_SECRET: "secret://on-demand-isr/on-demand-isr/{{ .environment }}/GITHUB_WEBHOOK_SECRET"
+  subscribe:
+    environments:
+      - name: dev
+        profile: verify
+      - name: stage
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+      - name: prod
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+  # How the site runs itself for orun.work's live Preview tab
+  # (saas-parallel-baselining PB4): `orun preview` starts this, and a coding
+  # session keeps it running while it works, so the person watches it change
+  # as it is built. The dev server binds the box's loopback only, on a fixed
+  # port, and installs first, so a checkout the session has not installed yet
+  # still comes up.
+  # It installs only this app's packages and runs `next dev` alone, with its
+  # heap capped: the box is shared with the agent. It holds no GitHub App:
+  # the App's settings are Orun secrets only a deploy hands to its Worker, so
+  # the preview lists the sample issues, as a fresh product does.
+  preview:
+    run:
+      - sh
+      - -c
+      - pnpm install --frozen-lockfile --prefer-offline --filter "@app/web..." && exec node_modules/.bin/next dev -H 127.0.0.1 -p 3000
+    port: 3000
+    path: /
+    env:
+      NODE_OPTIONS: --max-old-space-size=1024
+      NEXT_TELEMETRY_DISABLED: "1"
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+
+    workspaceDir: ../..
+    appDir: .
+
+    turboFilter: "@app/web"
+    wranglerConfig: wrangler.jsonc
+
+    # @opennextjs/cloudflare emits a Worker entrypoint plus a static-assets
+    # directory bound via ASSETS — both deploy in one `wrangler deploy`.
+    workerEntrypoint: .open-next/worker.js
+    assetsDir: .open-next/assets
+
+    # Per-env worker name: on-demand-isr-web-{dev,stage,prod}. The rendered
+    # wrangler.jsonc names the same Worker (its self-reference binding needs it).
+    workerName: on-demand-isr-web
+    environmentAwareWorkerName: true
+
+    # The account's workers.dev subdomain; exported to the smoke step as
+    # ${WORKERS_DEV_SUBDOMAIN} and used to build ${DEPLOYED_URL}.
+    workersDevSubdomain: your-workers-subdomain
+
+    installCommand: pnpm install --frozen-lockfile
+    # Render this environment's wrangler config, then build. stage and prod
+    # render from the wiring document their cloudflare-r2 apply published
+    # (secretEnv above, resolved before the job's first step); dev, which no
+    # root applies to and which only verifies, renders from the committed
+    # fixture. The committed wrangler.jsonc (the fixture render) is what the
+    # composition's verify-app-structure step finds before this runs. The
+    # GitHub App's settings never reach the build (`env -u`), so no bundle
+    # carries them and the build renders nothing from GitHub; on a deploy
+    # lane they then go to the Worker as SECRETS
+    # (tooling/wire/worker-secrets.mjs: `wrangler secret bulk` over stdin; a
+    # verify lane holds no Cloudflare credential and pushes nothing).
+    buildCommand: node ../../tooling/wire/live.mjs --template wrangler.template.jsonc --out wrangler.jsonc --components cloudflare-r2 --env "${ORUN_ENVIRONMENT}" --fixture wiring.fixture.json --fixture-envs dev && env -u GITHUB_APP_ID -u GITHUB_APP_PK_PEM -u GITHUB_WEBHOOK_SECRET pnpm exec turbo run build --filter=@app/web && node ../../tooling/wire/worker-secrets.mjs --secret GITHUB_APP_ID --secret GITHUB_APP_PK_PEM --secret GITHUB_WEBHOOK_SECRET --worker "on-demand-isr-web-${ORUN_ENVIRONMENT}" --config wrangler.jsonc
+
+    # Smoke: the site answers (`/` lists the repository's issues, or the
+    # sample issues before an App is connected), and the Worker itself answers
+    # /api/health, which no static file can. Not the site's name: that is the
+    # owner's to change, and HTML-escaped when it carries an `&` or `'`. Not an
+    # issue either: before an App is connected there is none of the
+    # repository's, and a connected repository may have none. Buffered before
+    # grep so an early match cannot SIGPIPE curl. It never posts to the
+    # webhook.
+    smokeCommand: 'curl -sfL -o /dev/null "${DEPLOYED_URL}/" && health=$(curl -sf "${DEPLOYED_URL}/api/health") && echo "${health}" | grep -q "\"ok\":true"'
+  labels:
+    team: platform
+    layer: delivery
+    surface: web
+    runtime: cloudflare

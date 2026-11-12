@@ -1,0 +1,25 @@
+{
+  "name": "@app/web-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@app/eslint-config": "workspace:*",
+    "@app/tsconfig": "workspace:*",
+    "@opennextjs/cloudflare": "1.20.16",
+    "@types/node": "22.13.4",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "next": "15.5.29",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "typescript": "5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

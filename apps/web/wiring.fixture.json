@@ -1,0 +1,11 @@
+{
+  "cloudflare-r2/dev": {
+    "r2_bucket_name": "dev-on-demand-isr-dev"
+  },
+  "cloudflare-r2/stage": {
+    "r2_bucket_name": "stg-on-demand-isr-stage"
+  },
+  "cloudflare-r2/prod": {
+    "r2_bucket_name": "prod-on-demand-isr-prod"
+  }
+}
