@@ -1,0 +1,9 @@
+{
+  "_comment": "THIS TREE'S OWN IDENTITY — the FROM side of every rebrand. tooling/rebrand/rebrand.mjs reads it to know what to rename AWAY from; a product's identity is the --values file, which is the TO side. Change a value here only together with the tree: these strings must be what the tree actually contains, or the rename silently misses and the product ships carrying this baseline's name. `productName` is the SITE_NAME seam in apps/web/app/site.ts; `slug` also names the R2 bucket names (terraform `repo`), the Worker and its self-reference binding, and the secret project — and it may appear NOWHERE ELSE in a shipped file (the rename would rewrite it), nor may the `pascal` form (the leftover sweep fails on it). GitHub's own words (GITHUB_APP_ID and the App's other settings) are not this identity, and the template's upstream names (vercel/on-demand-isr, nextjs/on-demand-isr, on-demand-isr.vercel.app) are protected: the rename never touches them. `domain` and `subdomain` are placeholders, because this baseline has never deployed under a name of its own; `githubOwner` is the owner in SOURCE_URL — the repository whose issues the site lists — and the repository links the docs carry.",
+  "slug": "on-demand-isr",
+  "pascal": "OnDemandIsr",
+  "productName": "On-Demand Incremental Static Regeneration",
+  "domain": "on-demand-isr.example.com",
+  "subdomain": "your-workers-subdomain",
+  "githubOwner": "sourceplane"
+}

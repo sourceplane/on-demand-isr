@@ -16,7 +16,7 @@ webhook secret.**
 
 | | |
 |---|---|
-| Status | In progress — OI1 on main: the site runs on Workers |
+| Status | ✅ Shipped (`baseline-v1`) — proven offline in Baseline CI; not yet live (risk OI-A) |
 | Upstream | [vercel/on-demand-isr](https://github.com/vercel/on-demand-isr) (MIT, `LICENSE.md`), at `2e96485` (2026-10-14) |
 | Reference | [sfcc-commerce](https://github.com/sourceplane/sfcc-commerce) and [commerce](https://github.com/sourceplane/commerce) — the same OpenNext, R2 and Durable Object shape, Worker secrets pushed after the build, a webhook that revalidates; [microcms-blog](https://github.com/sourceplane/microcms-blog) — a SaaS client's host rerouted by the e2e's own Worker entry |
 | Key | `OI` |

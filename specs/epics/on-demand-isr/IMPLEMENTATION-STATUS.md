@@ -4,7 +4,7 @@
 |---|---|---|
 | OI0 — the spec | ✅ | OI-1 |
 | OI1 — the site on Workers | ✅ | OI-2 |
-| OI2 — a baseline | planned | OI-3 |
+| OI2 — a baseline | ✅ | OI-3, tagged `baseline-v1` |
 
 ## Departures from the upstream template
 
