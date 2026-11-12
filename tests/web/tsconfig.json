@@ -1,0 +1,27 @@
+{
+  // The app's own compiler options (apps/web/tsconfig.json), because these
+  // tests import its sources and tsc checks every file it reaches under the
+  // importing project's options; only the paths, the JSX mode and the files
+  // differ.
+  "extends": "../../apps/web/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "paths": {
+      "@app/*": ["../../apps/web/*"]
+    },
+    "plugins": []
+  },
+  // The Worker's environment and the stylesheet and image modules are ambient
+  // declarations: the app's own, and Next.js's (for *.module.scss, *.png).
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../../apps/web/cloudflare-env.d.ts",
+    "../../apps/web/node_modules/next/types/global.d.ts",
+    "../../apps/web/node_modules/next/image-types/global.d.ts"
+  ],
+  "exclude": ["node_modules"]
+}

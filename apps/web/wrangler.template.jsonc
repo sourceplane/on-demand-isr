@@ -1,0 +1,62 @@
+// The source of wrangler.jsonc, which tooling/wire renders from it: from
+// wiring.fixture.json for local work (`pnpm run wire:fixture`, committed as
+// that render), and on every Orun lane from the wiring document the
+// `cloudflare-r2` Terraform root lease-publishes (WIRING_CLOUDFLARE_R2_<ENV>)
+// — dev, which no root applies to, from the fixture (component.yaml's
+// buildCommand). Edit this file, never wrangler.jsonc. The workers-assets
+// composition deploys one environment per job with no wrangler `--env`, so
+// `__ENV__` names the environment this config is rendered for. The Worker's
+// name carries it (on-demand-isr-web-stage, on-demand-isr-web-prod — the composition's
+// `workerName` + environment) because the self-reference service binding
+// below must name exactly the Worker it runs in.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "on-demand-isr-web-__ENV__",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "observability": { "enabled": true },
+  // No `vars`: the site's name and repository are app/site.ts. The GitHub
+  // App's settings — GITHUB_APP_ID, GITHUB_APP_PK_PEM (its private key) and
+  // GITHUB_WEBHOOK_SECRET — are Worker secrets the deploy hands over
+  // (tooling/wire/worker-secrets.mjs), read per request (lib/settings.ts).
+  // Without the first two the page lists sample issues; without the third
+  // app/api/webhook refuses every delivery.
+
+  // The Next.js incremental cache — every rendered page and `"use cache"`
+  // entry, keyed by the build's id — in the bucket
+  // infra/terraform/cloudflare-r2 provisions.
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "@@wiring(cloudflare-r2/__ENV__:r2_bucket_name)@@",
+    },
+  ],
+  // The tag cache (which paths and tags `revalidatePath` dropped, and when)
+  // and the revalidation queue: Durable Objects the generated Worker exports,
+  // created by the migration on first deploy.
+  "durable_objects": {
+    "bindings": [
+      { "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" },
+      {
+        "name": "NEXT_TAG_CACHE_DO_SHARDED",
+        "class_name": "DOShardedTagCache",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DOQueueHandler", "DOShardedTagCache"],
+    },
+  ],
+  // The queue revalidates a stale route by requesting it from the Worker
+  // itself.
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "on-demand-isr-web-__ENV__" },
+  ],
+}
